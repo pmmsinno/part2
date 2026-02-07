@@ -13,6 +13,15 @@ const io = new Server(server, {
 });
 
 app.use(express.static(path.join(__dirname, "public")));
+// Debug: check if public folder exists
+const fs = require("fs");
+const publicPath = path.join(__dirname, "public");
+console.log("__dirname:", __dirname);
+console.log("Public path:", publicPath);
+console.log("Public exists:", fs.existsSync(publicPath));
+if (fs.existsSync(publicPath)) {
+  console.log("Public contents:", fs.readdirSync(publicPath));
+}
 
 // ─── Difficulty Progression ──────────────────────────────────
 const DIFFICULTY = [
