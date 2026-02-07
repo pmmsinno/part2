@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🔴 Red Light Green Light — TV</title>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-dark: #0a0a0f;
+    --bg-card: #12121c;
+    --pink: #ed1b76;
+    --pink-glow: #ff2d8a;
+    --teal: #01c6ac;
+    --teal-glow: #00ffd5;
+    --red: #e63946;
+    --red-glow: #ff1744;
+    --green: #06d6a0;
+    --green-glow: #00ffb4;
+    --gold: #ffd700;
+    --text: #e8e8f0;
+    --text-dim: #6a6a80;
+    --eliminated: #3a1a1a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg-dark);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* ── Logo Background ── */
+  .bg-logos {
+    position: fixed; inset: 0; z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .bg-logo {
+    position: absolute;
+    opacity: 0.04;
+    filter: grayscale(100%) brightness(0.6);
+  }
+  .bg-logo.ieee-1 {
+    width: 350px; top: 8%; left: 5%;
+    transform: rotate(-8deg);
+  }
+  .bg-logo.tbp-1 {
+    width: 400px; bottom: 10%; right: 3%;
+    transform: rotate(5deg);
+  }
+  .bg-logo.ieee-2 {
+    width: 280px; bottom: 15%; left: 25%;
+    transform: rotate(12deg);
+    opacity: 0.025;
+  }
+  .bg-logo.tbp-2 {
+    width: 320px; top: 12%; right: 20%;
+    transform: rotate(-5deg);
+    opacity: 0.025;
+  }
+  .bg-logo.ieee-3 {
+    width: 200px; top: 55%; left: 60%;
+    transform: rotate(-15deg);
+    opacity: 0.02;
+  }
+
+  /* ── Animated Grid ── */
+  .bg-grid {
+    position: fixed; inset: 0; z-index: 1;
+    background-image:
+      linear-gradient(rgba(237,27,118,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(237,27,118,0.02) 1px, transparent 1px);
+    background-size: 60px 60px;
+    animation: gridMove 20s linear infinite;
+  }
+  @keyframes gridMove {
+    0% { transform: translate(0,0); }
+    100% { transform: translate(60px,60px); }
+  }
+
+  .bg-vignette {
+    position: fixed; inset: 0; z-index: 2;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.7) 100%);
+    pointer-events: none;
+  }
+
+  /* ── Shapes decoration ── */
+  .shapes-deco {
+    position: fixed; top: 20px; right: 30px; z-index: 3;
+    display: flex; gap: 18px; align-items: center; opacity: 0.3;
+  }
+  .shape-circle {
+    width: 36px; height: 36px; border: 3px solid var(--pink);
+    border-radius: 50%;
+  }
+  .shape-triangle {
+    width: 0; height: 0;
+    border-left: 20px solid transparent;
+    border-right: 20px solid transparent;
+    border-bottom: 34px solid var(--pink);
+  }
+  .shape-square {
+    width: 32px; height: 32px; border: 3px solid var(--pink);
+  }
+
+  /* ── Main Container ── */
+  .container {
+    position: relative; z-index: 10;
+    height: 100vh; width: 100vw;
+    display: flex; flex-direction: column;
+    padding: 24px 40px;
+  }
+
+  /* ── Header ── */
+  .header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 20px; flex-shrink: 0;
+  }
+  .title {
+    font-family: 'Anton', sans-serif;
+    font-size: 2.4rem;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    background: linear-gradient(135deg, var(--red) 0%, var(--green) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .subtitle {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+  .header-right {
+    display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+  }
+  .player-count {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.6rem;
+    color: var(--pink);
+    letter-spacing: 2px;
+  }
+  .round-badge {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1rem;
+    letter-spacing: 2px;
+    color: var(--teal);
+    display: none;
+  }
+  .round-badge.visible { display: block; }
+
+  /* ── Screens ── */
+  .screen { display: none; flex: 1; min-height: 0; }
+  .screen.active { display: flex; flex-direction: column; }
+
+  /* ── Lobby ── */
+  .lobby-content {
+    display: flex; flex: 1; gap: 40px; min-height: 0;
+  }
+  .lobby-left {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+  .qr-container {
+    background: #fff; border-radius: 16px; padding: 20px;
+    box-shadow: 0 0 60px rgba(237,27,118,0.2);
+    margin-bottom: 20px;
+  }
+  .qr-container img { width: 220px; height: 220px; display: block; }
+  .join-url {
+    font-size: 1rem; color: var(--teal);
+    letter-spacing: 1px; text-align: center;
+    word-break: break-all;
+  }
+  .scan-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.8rem; color: var(--text);
+    letter-spacing: 4px; margin-bottom: 16px;
+    text-transform: uppercase;
+  }
+
+  .lobby-right {
+    flex: 1.2; display: flex; flex-direction: column; min-height: 0;
+  }
+  .players-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.4rem; letter-spacing: 3px;
+    color: var(--text-dim); margin-bottom: 12px;
+    text-transform: uppercase;
+  }
+  .players-lobby-list {
+    flex: 1; overflow-y: auto; display: flex; flex-wrap: wrap;
+    gap: 10px; align-content: flex-start;
+    padding-right: 8px;
+  }
+  .players-lobby-list::-webkit-scrollbar { width: 4px; }
+  .players-lobby-list::-webkit-scrollbar-thumb { background: var(--pink); border-radius: 2px; }
+
+  .player-chip {
+    background: var(--bg-card);
+    border: 1px solid rgba(237,27,118,0.3);
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.2rem;
+    letter-spacing: 2px;
+    color: var(--text);
+    animation: chipIn 0.3s ease-out;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .player-chip .chip-num {
+    background: var(--pink);
+    color: #fff;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.85rem;
+  }
+  @keyframes chipIn {
+    from { opacity: 0; transform: scale(0.8); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .lobby-buttons {
+    display: flex; gap: 12px; align-self: center; margin-top: 20px;
+    flex-wrap: wrap; justify-content: center;
+  }
+  .start-btn {
+    padding: 16px 60px;
+    font-family: 'Anton', sans-serif;
+    font-size: 1.5rem; letter-spacing: 4px;
+    text-transform: uppercase;
+    background: var(--pink);
+    color: #fff; border: none;
+    border-radius: 8px; cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 0 30px rgba(237,27,118,0.3);
+  }
+  .start-btn:hover {
+    background: var(--pink-glow);
+    box-shadow: 0 0 50px rgba(237,27,118,0.5);
+    transform: translateY(-2px);
+  }
+  .start-btn:disabled {
+    opacity: 0.3; cursor: not-allowed;
+    box-shadow: none; transform: none;
+  }
+  .refresh-btn {
+    padding: 16px 30px;
+    font-family: 'Anton', sans-serif;
+    font-size: 1.1rem; letter-spacing: 3px;
+    text-transform: uppercase;
+    background: transparent;
+    color: var(--red);
+    border: 2px solid var(--red);
+    border-radius: 8px; cursor: pointer;
+    transition: all 0.2s;
+  }
+  .refresh-btn:hover {
+    background: var(--red);
+    color: #fff;
+    box-shadow: 0 0 20px rgba(230,57,70,0.3);
+  }
+
+  /* ── Game Screen ── */
+  .game-content { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+
+  .light-display {
+    display: flex; align-items: center; justify-content: center;
+    gap: 50px; padding: 24px 0; flex-shrink: 0;
+  }
+
+  .doll-container {
+    width: 120px; height: 160px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .doll {
+    font-size: 100px;
+    transition: transform 0.3s ease;
+    filter: drop-shadow(0 0 20px rgba(0,0,0,0.5));
+  }
+  .doll.facing { transform: scaleX(1); }
+  .doll.turned { transform: scaleX(-1); }
+
+  .light-indicator {
+    width: 200px; height: 200px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Anton', sans-serif;
+    font-size: 1.8rem;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    transition: all 0.15s ease;
+    border: 4px solid rgba(255,255,255,0.1);
+  }
+  .light-indicator.red {
+    background: radial-gradient(circle, var(--red) 0%, #8b0000 100%);
+    box-shadow: 0 0 80px rgba(230,57,70,0.6), 0 0 160px rgba(230,57,70,0.3), inset 0 0 40px rgba(0,0,0,0.3);
+    color: #fff;
+  }
+  .light-indicator.green {
+    background: radial-gradient(circle, var(--green) 0%, #048a6a 100%);
+    box-shadow: 0 0 80px rgba(6,214,160,0.6), 0 0 160px rgba(6,214,160,0.3), inset 0 0 40px rgba(0,0,0,0.3);
+    color: #fff;
+  }
+
+  .round-info-bar {
+    display: flex; justify-content: center; align-items: center; gap: 30px;
+    flex-shrink: 0; margin-bottom: 8px;
+  }
+  .round-info-item {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.1rem;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+  }
+  .round-info-item span { color: var(--teal); }
+  .round-info-item .danger { color: var(--red); }
+
+  /* ── Players Grid ── */
+  .players-grid-container {
+    flex: 1; overflow-y: auto; min-height: 0; padding: 4px;
+  }
+  .players-grid-container::-webkit-scrollbar { width: 4px; }
+  .players-grid-container::-webkit-scrollbar-thumb { background: var(--pink); border-radius: 2px; }
+
+  .players-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+  }
+
+  .player-card {
+    background: var(--bg-card);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+    padding: 12px 16px;
+    transition: all 0.3s ease;
+    overflow: hidden;
+  }
+  .player-card.holding {
+    border-color: var(--green);
+    box-shadow: 0 0 15px rgba(6,214,160,0.15);
+  }
+  .player-card.eliminated {
+    background: var(--eliminated);
+    border-color: rgba(230,57,70,0.3);
+    opacity: 0.6;
+  }
+  .player-card.eliminated .player-name { text-decoration: line-through; color: var(--red); }
+  .player-card.finished {
+    border-color: var(--gold);
+    box-shadow: 0 0 20px rgba(255,215,0,0.2);
+  }
+
+  .player-card-top {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 8px;
+  }
+  .player-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.15rem; letter-spacing: 2px;
+    color: var(--text);
+  }
+  .player-status {
+    font-size: 0.7rem; letter-spacing: 1px;
+    padding: 2px 8px; border-radius: 4px;
+    text-transform: uppercase;
+  }
+  .player-status.alive { background: rgba(6,214,160,0.15); color: var(--green); }
+  .player-status.dead { background: rgba(230,57,70,0.15); color: var(--red); }
+  .player-status.winner { background: rgba(255,215,0,0.15); color: var(--gold); }
+
+  .progress-bar {
+    height: 6px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--teal), var(--green));
+    border-radius: 3px;
+    transition: width 0.15s linear;
+    box-shadow: 0 0 8px rgba(1,198,172,0.4);
+  }
+  .player-card.eliminated .progress-fill {
+    background: var(--red); box-shadow: none;
+  }
+
+  /* ── Alive counter ── */
+  .alive-counter {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.3rem;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+    text-align: center;
+    margin-bottom: 10px;
+    flex-shrink: 0;
+  }
+  .alive-counter span { color: var(--green); }
+
+  /* ── Countdown Overlay ── */
+  .countdown-overlay {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(0,0,0,0.85);
+    display: none; align-items: center; justify-content: center;
+    flex-direction: column; gap: 20px;
+  }
+  .countdown-overlay.active { display: flex; }
+  .countdown-number {
+    font-family: 'Anton', sans-serif;
+    font-size: 18rem;
+    color: var(--pink);
+    text-shadow: 0 0 80px rgba(237,27,118,0.5);
+    animation: countPulse 0.8s ease-out;
+    line-height: 1;
+  }
+  .countdown-round-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2rem;
+    letter-spacing: 6px;
+    color: var(--teal);
+  }
+  @keyframes countPulse {
+    0% { transform: scale(2); opacity: 0; }
+    50% { opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  /* ── Elimination Flash ── */
+  .elimination-flash {
+    position: fixed; inset: 0; z-index: 90;
+    background: rgba(230,57,70,0.15);
+    pointer-events: none;
+    animation: elimFlash 0.5s ease-out forwards;
+  }
+  @keyframes elimFlash {
+    0% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  .elimination-banner {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 91;
+    font-family: 'Anton', sans-serif;
+    font-size: 3rem;
+    color: var(--red);
+    text-shadow: 0 0 40px rgba(230,57,70,0.8);
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    pointer-events: none;
+    animation: bannerIn 1.5s ease-out forwards;
+  }
+  @keyframes bannerIn {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(1.5); }
+    20% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    80% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  /* ── Game Over Screen ── */
+  .gameover-content {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 24px;
+  }
+  .gameover-label {
+    font-family: 'Anton', sans-serif;
+    font-size: 4rem;
+    letter-spacing: 8px;
+    text-transform: uppercase;
+    color: var(--pink);
+    text-shadow: 0 0 60px rgba(237,27,118,0.4);
+  }
+  .winner-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 3rem;
+    letter-spacing: 6px;
+    color: var(--gold);
+    text-shadow: 0 0 40px rgba(255,215,0,0.4);
+  }
+  .no-winner {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2rem;
+    letter-spacing: 4px;
+    color: var(--red);
+  }
+  .gameover-buttons {
+    display: flex; gap: 16px; margin-top: 20px; flex-wrap: wrap; justify-content: center;
+  }
+  .play-again-btn {
+    padding: 16px 50px;
+    font-family: 'Anton', sans-serif;
+    font-size: 1.3rem; letter-spacing: 4px;
+    text-transform: uppercase;
+    background: transparent;
+    color: var(--teal);
+    border: 2px solid var(--teal);
+    border-radius: 8px; cursor: pointer;
+    transition: all 0.2s;
+  }
+  .play-again-btn:hover {
+    background: var(--teal);
+    color: var(--bg-dark);
+    box-shadow: 0 0 30px rgba(1,198,172,0.3);
+  }
+  .reset-lobby-btn {
+    padding: 16px 40px;
+    font-family: 'Anton', sans-serif;
+    font-size: 1.1rem; letter-spacing: 3px;
+    text-transform: uppercase;
+    background: transparent;
+    color: var(--red);
+    border: 2px solid var(--red);
+    border-radius: 8px; cursor: pointer;
+    transition: all 0.2s;
+  }
+  .reset-lobby-btn:hover {
+    background: var(--red);
+    color: #fff;
+    box-shadow: 0 0 20px rgba(230,57,70,0.3);
+  }
+
+  .controls-bar {
+    display: flex; justify-content: center; gap: 16px;
+    padding: 12px 0; flex-shrink: 0;
+  }
+  .ctrl-btn {
+    padding: 8px 24px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.8rem; letter-spacing: 2px;
+    text-transform: uppercase;
+    background: rgba(255,255,255,0.04);
+    color: var(--text-dim);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 6px; cursor: pointer;
+    transition: all 0.2s;
+  }
+  .ctrl-btn:hover {
+    background: rgba(255,255,255,0.08);
+    color: var(--text);
+    border-color: rgba(255,255,255,0.15);
+  }
+  .ctrl-btn.danger { border-color: rgba(230,57,70,0.3); color: var(--red); }
+  .ctrl-btn.danger:hover { background: rgba(230,57,70,0.1); }
+
+  /* ── Sound toggle ── */
+  .sound-toggle {
+    position: fixed; bottom: 20px; right: 30px;
+    z-index: 50; background: var(--bg-card);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: var(--text-dim);
+    padding: 8px 12px; border-radius: 6px;
+    cursor: pointer; font-size: 1.2rem;
+  }
+</style>
+</head>
+<body>
+
+<!-- Background Logos -->
+<div class="bg-logos">
+  <img src="/ieee-logo.png" class="bg-logo ieee-1" alt="">
+  <img src="/tbp-logo.png" class="bg-logo tbp-1" alt="">
+  <img src="/ieee-logo.png" class="bg-logo ieee-2" alt="">
+  <img src="/tbp-logo.png" class="bg-logo tbp-2" alt="">
+  <img src="/ieee-logo.png" class="bg-logo ieee-3" alt="">
+</div>
+
+<div class="bg-grid"></div>
+<div class="bg-vignette"></div>
+
+<div class="shapes-deco">
+  <div class="shape-circle"></div>
+  <div class="shape-triangle"></div>
+  <div class="shape-square"></div>
+</div>
+
+<div class="container">
+  <div class="header">
+    <div>
+      <div class="title">Red Light Green Light</div>
+      <div class="subtitle">IEEE × Tau Beta Pi — TAMUQ</div>
+    </div>
+    <div class="header-right">
+      <div class="player-count" id="playerCount">0 Players</div>
+      <div class="round-badge" id="roundBadge"></div>
+    </div>
+  </div>
+
+  <!-- LOBBY SCREEN -->
+  <div class="screen active" id="lobbyScreen">
+    <div class="lobby-content">
+      <div class="lobby-left">
+        <div class="scan-label">Scan to Join</div>
+        <div class="qr-container">
+          <img id="qrCode" alt="QR Code" />
+        </div>
+        <div class="join-url" id="joinUrl">Loading...</div>
+      </div>
+      <div class="lobby-right">
+        <div class="players-title">Players Joined</div>
+        <div class="players-lobby-list" id="lobbyPlayersList"></div>
+        <div class="lobby-buttons">
+          <button class="start-btn" id="startBtn" disabled onclick="startGame()">
+            Start Game
+          </button>
+          <button class="refresh-btn" onclick="refreshLobby()">
+            ↻ Refresh Lobby
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GAME SCREEN -->
+  <div class="screen" id="gameScreen">
+    <div class="game-content">
+      <div class="light-display">
+        <div class="doll-container">
+          <div class="doll" id="doll">🧍‍♀️</div>
+        </div>
+        <div class="light-indicator red" id="lightIndicator">STOP</div>
+      </div>
+      <div class="round-info-bar" id="roundInfoBar">
+        <div class="round-info-item">Round: <span id="infoRound">1</span></div>
+        <div class="round-info-item">Difficulty: <span id="infoDifficulty">WARM-UP</span></div>
+        <div class="round-info-item">Grace: <span class="danger" id="infoGrace">1000</span>ms</div>
+      </div>
+      <div class="alive-counter" id="aliveCounter"></div>
+      <div class="players-grid-container">
+        <div class="players-grid" id="playersGrid"></div>
+      </div>
+      <div class="controls-bar">
+        <button class="ctrl-btn danger" onclick="refreshLobby()">↻ Refresh Lobby</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- GAME OVER SCREEN -->
+  <div class="screen" id="gameOverScreen">
+    <div class="gameover-content">
+      <div class="gameover-label">Game Over</div>
+      <div id="winnerDisplay"></div>
+      <div class="gameover-buttons">
+        <button class="play-again-btn" onclick="playAgain()">Next Round →</button>
+        <button class="reset-lobby-btn" onclick="refreshLobby()">↻ Refresh Lobby</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="countdown-overlay" id="countdownOverlay">
+  <div class="countdown-round-label" id="countdownRoundLabel"></div>
+  <div class="countdown-number" id="countdownNumber"></div>
+</div>
+
+<button class="sound-toggle" id="soundToggle" onclick="toggleSound()">🔊</button>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+
+// ── Audio ──
+let audioCtx = null;
+let soundEnabled = true;
+
+function initAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+
+function playTone(freq, duration, type = 'square', volume = 0.15) {
+  if (!soundEnabled) return;
+  initAudio();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  gain.gain.value = volume;
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + duration);
+}
+
+function playGreenSound() { playTone(880, 0.15, 'square', 0.12); setTimeout(() => playTone(1100, 0.15, 'square', 0.12), 100); }
+function playRedSound() { playTone(220, 0.4, 'sawtooth', 0.15); }
+function playEliminationSound() { playTone(150, 0.6, 'sawtooth', 0.2); }
+function playCountdownBeep() { playTone(660, 0.1, 'sine', 0.15); }
+function playWinSound() {
+  [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => playTone(f, 0.3, 'sine', 0.12), i * 150));
+}
+
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  document.getElementById('soundToggle').textContent = soundEnabled ? '🔊' : '🔇';
+}
+
+// ── Elements ──
+const lobbyScreen = document.getElementById('lobbyScreen');
+const gameScreen = document.getElementById('gameScreen');
+const gameOverScreen = document.getElementById('gameOverScreen');
+const lobbyPlayersList = document.getElementById('lobbyPlayersList');
+const playersGrid = document.getElementById('playersGrid');
+const lightIndicator = document.getElementById('lightIndicator');
+const playerCountEl = document.getElementById('playerCount');
+const startBtn = document.getElementById('startBtn');
+const doll = document.getElementById('doll');
+const aliveCounter = document.getElementById('aliveCounter');
+const countdownOverlay = document.getElementById('countdownOverlay');
+const countdownNumber = document.getElementById('countdownNumber');
+const roundBadge = document.getElementById('roundBadge');
+
+let currentPlayers = [];
+
+function showScreen(name) {
+  [lobbyScreen, gameScreen, gameOverScreen].forEach(s => s.classList.remove('active'));
+  if (name === 'lobby') lobbyScreen.classList.add('active');
+  else if (name === 'game') gameScreen.classList.add('active');
+  else if (name === 'gameover') gameOverScreen.classList.add('active');
+}
+
+// ── Join as TV ──
+socket.emit('joinTV');
+
+// ── Load QR Code ──
+fetch('/qr')
+  .then(r => r.json())
+  .then(data => {
+    document.getElementById('qrCode').src = data.qr;
+    document.getElementById('joinUrl').textContent = data.url;
+  });
+
+// ── Socket Events ──
+socket.on('gameState', (state) => {
+  currentPlayers = state.players;
+  const total = state.players.length;
+  const alive = state.players.filter(p => p.alive).length;
+  playerCountEl.textContent = `${total} Player${total !== 1 ? 's' : ''}`;
+  startBtn.disabled = total < 1;
+
+  // Round badge
+  if (state.round > 0) {
+    roundBadge.textContent = `Round ${state.round} — ${state.difficulty?.roundLabel || ''}`;
+    roundBadge.classList.add('visible');
+  } else {
+    roundBadge.classList.remove('visible');
+  }
+
+  if (state.phase === 'lobby') {
+    showScreen('lobby');
+    renderLobbyPlayers(state.players);
+  } else if (state.phase === 'playing' || state.phase === 'countdown') {
+    showScreen('game');
+    updateLight(state.light);
+    renderGamePlayers(state.players);
+    aliveCounter.innerHTML = `<span>${alive}</span> / ${total} ALIVE`;
+
+    // Update round info bar
+    if (state.difficulty) {
+      document.getElementById('infoRound').textContent = state.round;
+      document.getElementById('infoDifficulty').textContent = state.difficulty.roundLabel;
+      document.getElementById('infoGrace').textContent = state.difficulty.gracePeriodMs;
+    }
+  } else if (state.phase === 'gameOver') {
+    showScreen('gameover');
+  }
+});
+
+socket.on('playerJoined', (player) => {
+  playCountdownBeep();
+});
+
+socket.on('roundInfo', (info) => {
+  document.getElementById('countdownRoundLabel').textContent =
+    `ROUND ${info.round} — ${info.label}`;
+});
+
+socket.on('countdown', (num) => {
+  countdownOverlay.classList.add('active');
+  countdownNumber.textContent = num;
+  countdownNumber.style.animation = 'none';
+  void countdownNumber.offsetWidth;
+  countdownNumber.style.animation = 'countPulse 0.8s ease-out';
+  playCountdownBeep();
+  if (num <= 0) {
+    setTimeout(() => countdownOverlay.classList.remove('active'), 500);
+  }
+});
+
+socket.on('eliminations', (eliminated) => {
+  playEliminationSound();
+
+  const flash = document.createElement('div');
+  flash.className = 'elimination-flash';
+  document.body.appendChild(flash);
+  setTimeout(() => flash.remove(), 500);
+
+  const names = eliminated.map(e => e.name).join(', ');
+  const banner = document.createElement('div');
+  banner.className = 'elimination-banner';
+  banner.textContent = `☠ ${names} ELIMINATED`;
+  document.body.appendChild(banner);
+  setTimeout(() => banner.remove(), 1500);
+});
+
+socket.on('gameOver', (data) => {
+  showScreen('gameover');
+  countdownOverlay.classList.remove('active');
+  const display = document.getElementById('winnerDisplay');
+  if (data.winner) {
+    display.innerHTML = `<div class="winner-name">🏆 ${data.winner.name} WINS!</div>`;
+    playWinSound();
+  } else {
+    display.innerHTML = `<div class="no-winner">No survivors...</div>`;
+  }
+});
+
+// ── Render Functions ──
+function renderLobbyPlayers(players) {
+  lobbyPlayersList.innerHTML = players.map((p, i) =>
+    `<div class="player-chip">
+      <span class="chip-num">${String(i + 1).padStart(3, '0')}</span>
+      ${escapeHtml(p.name)}
+    </div>`
+  ).join('');
+}
+
+function renderGamePlayers(players) {
+  const sorted = [...players].sort((a, b) => {
+    if (a.alive !== b.alive) return a.alive ? -1 : 1;
+    return b.progress - a.progress;
+  });
+
+  playersGrid.innerHTML = sorted.map(p => {
+    const classes = ['player-card'];
+    if (!p.alive) classes.push('eliminated');
+    if (p.holding && p.alive) classes.push('holding');
+    if (p.finishedAt) classes.push('finished');
+
+    let statusClass = p.alive ? 'alive' : 'dead';
+    let statusText = p.alive ? 'ALIVE' : 'ELIMINATED';
+    if (p.finishedAt) { statusClass = 'winner'; statusText = 'FINISHED'; }
+
+    return `<div class="${classes.join(' ')}">
+      <div class="player-card-top">
+        <div class="player-name">${escapeHtml(p.name)}</div>
+        <div class="player-status ${statusClass}">${statusText}</div>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" style="width: ${p.progress}%"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateLight(light) {
+  countdownOverlay.classList.remove('active');
+  if (light === 'green') {
+    lightIndicator.className = 'light-indicator green';
+    lightIndicator.textContent = 'GO';
+    doll.classList.remove('facing');
+    doll.classList.add('turned');
+    playGreenSound();
+  } else {
+    lightIndicator.className = 'light-indicator red';
+    lightIndicator.textContent = 'STOP';
+    doll.classList.remove('turned');
+    doll.classList.add('facing');
+    playRedSound();
+  }
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ── Controls ──
+function startGame() { initAudio(); socket.emit('startGame'); }
+function refreshLobby() {
+  if (confirm('This will kick all players and require everyone to re-join. Continue?')) {
+    socket.emit('resetLobby');
+  }
+}
+function playAgain() { socket.emit('startGame'); }
+</script>
+</body>
+</html>
