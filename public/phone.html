@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+<title>🔴 Red Light Green Light</title>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-dark: #0a0a0f; --bg-card: #12121c; --pink: #ed1b76;
+    --teal: #01c6ac; --red: #e63946; --green: #06d6a0;
+    --gold: #ffd700; --text: #e8e8f0; --text-dim: #6a6a80;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background:var(--bg-dark); color:var(--text);
+    font-family:'Share Tech Mono',monospace;
+    height:100dvh; width:100vw; overflow:hidden;
+    -webkit-user-select:none; user-select:none;
+    -webkit-touch-callout:none; touch-action:none;
+  }
+  .screen { display:none; height:100dvh; width:100vw; }
+  .screen.active { display:flex; flex-direction:column; }
+
+  .join-screen { align-items:center; justify-content:center; padding:40px 30px; gap:30px; background:linear-gradient(180deg,var(--bg-dark) 0%,#0f0f1a 100%); }
+  .join-title { font-family:'Anton',sans-serif; font-size:2rem; text-transform:uppercase; letter-spacing:4px; text-align:center; background:linear-gradient(135deg,var(--red),var(--green)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+  .join-sub { font-size:0.75rem; color:var(--text-dim); letter-spacing:3px; text-transform:uppercase; text-align:center; }
+  .shapes-row { display:flex; gap:20px; align-items:center; opacity:0.4; }
+  .s-circle { width:28px; height:28px; border:2px solid var(--pink); border-radius:50%; }
+  .s-triangle { width:0; height:0; border-left:15px solid transparent; border-right:15px solid transparent; border-bottom:26px solid var(--pink); }
+  .s-square { width:24px; height:24px; border:2px solid var(--pink); }
+  .join-form { display:flex; flex-direction:column; gap:16px; width:100%; max-width:320px; }
+  .name-input { background:var(--bg-card); border:2px solid rgba(237,27,118,0.3); border-radius:12px; padding:16px 20px; font-family:'Bebas Neue',sans-serif; font-size:1.4rem; letter-spacing:3px; color:var(--text); text-align:center; outline:none; transition:border-color 0.2s; }
+  .name-input::placeholder { color:var(--text-dim); letter-spacing:4px; }
+  .name-input:focus { border-color:var(--pink); box-shadow:0 0 20px rgba(237,27,118,0.15); }
+  .join-btn { padding:16px; font-family:'Anton',sans-serif; font-size:1.3rem; letter-spacing:4px; text-transform:uppercase; background:var(--pink); color:#fff; border:none; border-radius:12px; cursor:pointer; transition:all 0.2s; box-shadow:0 0 25px rgba(237,27,118,0.25); }
+  .join-btn:active { transform:scale(0.97); background:#c51562; }
+  .join-error { color:var(--red); font-size:0.85rem; text-align:center; letter-spacing:1px; min-height:1.2em; }
+
+  .wait-screen { align-items:center; justify-content:center; gap:20px; background:var(--bg-dark); }
+  .wait-name { font-family:'Bebas Neue',sans-serif; font-size:2rem; letter-spacing:4px; color:var(--teal); }
+  .wait-msg { font-size:0.9rem; color:var(--text-dim); letter-spacing:2px; animation:pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:0.5;} 50%{opacity:1;} }
+
+  .game-screen { position:relative; }
+  .game-top-bar { position:absolute; top:0; left:0; right:0; z-index:10; display:flex; justify-content:space-between; align-items:center; padding:16px 20px; }
+  .light-label { font-family:'Anton',sans-serif; font-size:1.8rem; letter-spacing:4px; text-transform:uppercase; transition:color 0.15s; }
+  .light-label.red { color:var(--red); } .light-label.green { color:var(--green); }
+  .progress-display { font-family:'Bebas Neue',sans-serif; font-size:1.3rem; letter-spacing:2px; color:var(--text-dim); }
+  .progress-display span { color:var(--teal); }
+  .game-progress-bar { position:absolute; top:65px; left:20px; right:20px; z-index:10; height:8px; background:rgba(255,255,255,0.06); border-radius:4px; overflow:hidden; }
+  .game-progress-fill { height:100%; background:linear-gradient(90deg,var(--teal),var(--green)); border-radius:4px; transition:width 0.15s linear; box-shadow:0 0 10px rgba(1,198,172,0.5); }
+
+  .hold-zone { flex:1; display:flex; align-items:center; justify-content:center; transition:background 0.15s ease; position:relative; }
+  .hold-zone.idle { background:var(--bg-dark); }
+  .hold-zone.green-light { background:linear-gradient(180deg,rgba(6,214,160,0.08) 0%,rgba(6,214,160,0.02) 100%); }
+  .hold-zone.green-light.pressing { background:linear-gradient(180deg,rgba(6,214,160,0.2) 0%,rgba(6,214,160,0.05) 100%); }
+  .hold-zone.red-light { background:linear-gradient(180deg,rgba(230,57,70,0.08) 0%,rgba(230,57,70,0.02) 100%); }
+
+  .hold-instruction { text-align:center; pointer-events:none; }
+  .hold-icon { font-size:4rem; margin-bottom:16px; opacity:0.6; transition:all 0.2s; }
+  .pressing .hold-icon { opacity:1; transform:scale(1.1); }
+  .hold-text { font-family:'Bebas Neue',sans-serif; font-size:1.5rem; letter-spacing:4px; color:var(--text-dim); transition:color 0.2s; }
+  .green-light .hold-text { color:var(--green); } .red-light .hold-text { color:var(--red); }
+  .pulse-ring { position:absolute; width:150px; height:150px; border-radius:50%; border:3px solid var(--green); opacity:0; pointer-events:none; }
+  .pressing .pulse-ring { animation:ringPulse 1s ease-out infinite; }
+  @keyframes ringPulse { 0%{transform:scale(0.8);opacity:0.5;} 100%{transform:scale(1.6);opacity:0;} }
+
+  .phone-countdown { position:fixed; inset:0; z-index:50; background:rgba(0,0,0,0.9); display:none; align-items:center; justify-content:center; flex-direction:column; gap:16px; }
+  .phone-countdown.active { display:flex; }
+  .phone-countdown-round { font-family:'Bebas Neue',sans-serif; font-size:1.4rem; letter-spacing:4px; color:var(--teal); }
+  .phone-countdown-num { font-family:'Anton',sans-serif; font-size:12rem; color:var(--pink); text-shadow:0 0 60px rgba(237,27,118,0.5); animation:countPulse 0.8s ease-out; line-height:1; }
+  @keyframes countPulse { 0%{transform:scale(2);opacity:0;} 50%{opacity:1;} 100%{transform:scale(1);opacity:1;} }
+
+  /* ── Eliminated — full lock screen ── */
+  .eliminated-screen { align-items:center; justify-content:center; gap:20px; background:linear-gradient(180deg,#1a0a0a 0%,var(--bg-dark) 100%); }
+  .elim-icon { font-size:5rem; }
+  .elim-text { font-family:'Anton',sans-serif; font-size:2.5rem; color:var(--red); letter-spacing:6px; text-shadow:0 0 40px rgba(230,57,70,0.4); }
+  .position-display { font-family:'Bebas Neue',sans-serif; font-size:1.8rem; letter-spacing:4px; color:var(--text-dim); margin-top:8px; }
+  .position-display span { color:var(--pink); font-size:2.2rem; }
+  .elim-sub { font-size:0.85rem; color:var(--text-dim); letter-spacing:2px; }
+  .elim-watching { font-size:0.75rem; color:var(--text-dim); letter-spacing:2px; margin-top:16px; opacity:0.5; }
+
+  .winner-screen { align-items:center; justify-content:center; gap:20px; background:linear-gradient(180deg,#1a1800 0%,var(--bg-dark) 100%); }
+  .win-icon { font-size:5rem; }
+  .win-text { font-family:'Anton',sans-serif; font-size:2.5rem; color:var(--gold); letter-spacing:6px; text-shadow:0 0 40px rgba(255,215,0,0.4); }
+  .win-sub { font-size:0.85rem; color:var(--text-dim); letter-spacing:2px; }
+  .win-position { font-family:'Bebas Neue',sans-serif; font-size:1.8rem; letter-spacing:4px; color:var(--gold); }
+
+  .reset-notice { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:60; background:var(--bg-card); border:2px solid var(--red); border-radius:16px; padding:30px 40px; text-align:center; display:none; animation:fadeIn 0.3s ease; }
+  .reset-notice.active { display:block; }
+  .reset-notice-text { font-family:'Bebas Neue',sans-serif; font-size:1.4rem; letter-spacing:3px; color:var(--red); margin-bottom:12px; }
+  .reset-notice-sub { font-size:0.8rem; color:var(--text-dim); letter-spacing:1px; }
+  @keyframes fadeIn { from{opacity:0;transform:translate(-50%,-50%) scale(0.9);} to{opacity:1;transform:translate(-50%,-50%) scale(1);} }
+</style>
+</head>
+<body>
+
+<div class="screen active" id="joinScreen">
+  <div class="join-screen">
+    <div class="shapes-row"><div class="s-circle"></div><div class="s-triangle"></div><div class="s-square"></div></div>
+    <div class="join-title">Red Light<br>Green Light</div>
+    <div class="join-sub">IEEE × TBP — TAMUQ</div>
+    <div class="join-form">
+      <input class="name-input" id="nameInput" type="text" placeholder="YOUR NAME" maxlength="15" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+      <button class="join-btn" onclick="joinGame()">Enter</button>
+      <div class="join-error" id="joinError"></div>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="waitScreen">
+  <div class="wait-screen">
+    <div class="shapes-row"><div class="s-circle"></div><div class="s-triangle"></div><div class="s-square"></div></div>
+    <div class="wait-name" id="waitName"></div>
+    <div class="wait-msg">Waiting for game to start...</div>
+  </div>
+</div>
+
+<div class="screen" id="gamePlayScreen">
+  <div class="game-screen" style="display:flex;flex-direction:column;height:100dvh;">
+    <div class="game-top-bar">
+      <div class="light-label red" id="lightLabel">STOP</div>
+      <div class="progress-display"><span id="progressPct">0</span>%</div>
+    </div>
+    <div class="game-progress-bar"><div class="game-progress-fill" id="progressBar" style="width:0%"></div></div>
+    <div class="hold-zone idle" id="holdZone">
+      <div class="hold-instruction">
+        <div class="hold-icon" id="holdIcon">👆</div>
+        <div class="hold-text" id="holdText">WAIT FOR GREEN</div>
+        <div class="pulse-ring"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="phone-countdown" id="phoneCountdown">
+  <div class="phone-countdown-round" id="phoneRoundLabel"></div>
+  <div class="phone-countdown-num" id="phoneCountdownNum"></div>
+</div>
+
+<div class="screen" id="eliminatedScreen">
+  <div class="eliminated-screen">
+    <div class="elim-icon">💀</div>
+    <div class="elim-text">Eliminated</div>
+    <div class="position-display" id="elimPosition"></div>
+    <div class="elim-sub">Better luck next time</div>
+    <div class="elim-watching">Watch the TV for the leaderboard</div>
+  </div>
+</div>
+
+<div class="screen" id="winnerScreen">
+  <div class="winner-screen">
+    <div class="win-icon">🏆</div>
+    <div class="win-text" id="winText">You Win!</div>
+    <div class="win-position" id="winPosition"></div>
+    <div class="win-sub">Congratulations</div>
+  </div>
+</div>
+
+<div class="reset-notice" id="resetNotice">
+  <div class="reset-notice-text">LOBBY RESET</div>
+  <div class="reset-notice-sub">Please rejoin the game</div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+let myName='', isHolding=false, gameActive=false, isAlive=true, isEliminated=false;
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function joinGame() {
+  const name = document.getElementById('nameInput').value.trim();
+  if (!name) { document.getElementById('joinError').textContent='Enter your name!'; return; }
+  socket.emit('joinGame', name);
+}
+
+document.getElementById('nameInput').addEventListener('keydown', e => { if(e.key==='Enter') joinGame(); });
+
+socket.on('joined', d => {
+  myName=d.name; isAlive=true; isEliminated=false;
+  document.getElementById('waitName').textContent=myName;
+  document.getElementById('joinError').textContent='';
+  showScreen('waitScreen');
+});
+
+socket.on('joinError', msg => { document.getElementById('joinError').textContent=msg; });
+
+socket.on('lobbyReset', () => {
+  gameActive=false; isHolding=false; isAlive=true; isEliminated=false; myName='';
+  document.getElementById('resetNotice').classList.add('active');
+  showScreen('joinScreen');
+  if(navigator.vibrate) navigator.vibrate([100,50,100]);
+  setTimeout(()=>document.getElementById('resetNotice').classList.remove('active'),2500);
+});
+
+socket.on('kicked', () => {
+  gameActive=false; isHolding=false; isEliminated=false; myName='';
+  showScreen('joinScreen');
+  document.getElementById('joinError').textContent='You were removed.';
+});
+
+socket.on('countdown', n => {
+  // Only show if alive
+  if (isEliminated) return;
+  const o=document.getElementById('phoneCountdown'), el=document.getElementById('phoneCountdownNum');
+  o.classList.add('active'); el.textContent=n;
+  el.style.animation='none'; void el.offsetWidth; el.style.animation='countPulse 0.8s ease-out';
+  if(navigator.vibrate) navigator.vibrate(100);
+});
+
+socket.on('roundInfo', i => {
+  document.getElementById('phoneRoundLabel').textContent = `ROUND ${i.round} — ${i.label}`;
+});
+
+socket.on('playerState', s => {
+  // If eliminated, ALWAYS stay on eliminated screen regardless of phase
+  if (isEliminated) {
+    if (s.position) {
+      document.getElementById('elimPosition').innerHTML =
+        `Position: <span>#${s.position.position}</span> / ${s.position.total}`;
+    }
+    // Keep showing eliminated screen
+    showScreen('eliminatedScreen');
+    document.getElementById('phoneCountdown').classList.remove('active');
+    return;
+  }
+
+  if (s.phase === 'playing') {
+    showScreen('gamePlayScreen');
+    document.getElementById('phoneCountdown').classList.remove('active');
+    gameActive=true; isAlive=s.alive;
+
+    document.getElementById('progressBar').style.width = s.progress+'%';
+    document.getElementById('progressPct').textContent = Math.floor(s.progress);
+
+    const ll=document.getElementById('lightLabel'), hz=document.getElementById('holdZone');
+    const hi=document.getElementById('holdIcon'), ht=document.getElementById('holdText');
+
+    if (s.light==='green') {
+      ll.className='light-label green'; ll.textContent='GO!';
+      hz.className='hold-zone green-light'+(isHolding?' pressing':'');
+      hi.textContent='🏃'; ht.textContent=isHolding?'RUNNING!':'HOLD TO RUN';
+    } else {
+      ll.className='light-label red'; ll.textContent='STOP';
+      hz.className='hold-zone red-light';
+      hi.textContent='🛑'; ht.textContent="DON'T TOUCH!";
+    }
+
+    if (!s.alive) {
+      isEliminated = true;
+      gameActive = false;
+      if (s.position) {
+        document.getElementById('elimPosition').innerHTML =
+          `Position: <span>#${s.position.position}</span> / ${s.position.total}`;
+      }
+      showScreen('eliminatedScreen');
+      if(navigator.vibrate) navigator.vibrate([200,100,200,100,200]);
+    }
+  } else if (s.phase === 'lobby') {
+    gameActive=false; isHolding=false;
+    if (myName && isAlive) showScreen('waitScreen');
+  } else if (s.phase === 'gameOver') {
+    gameActive=false;
+    if (s.alive && s.progress >= 100) {
+      document.getElementById('winText').textContent = 'You Win! 🎉';
+      if(s.position) document.getElementById('winPosition').textContent = `#${s.position.position} of ${s.position.total}`;
+      showScreen('winnerScreen');
+      if(navigator.vibrate) navigator.vibrate([100,50,100,50,300]);
+    } else if (s.alive) {
+      document.getElementById('winText').textContent = 'Round Complete!';
+      if(s.position) document.getElementById('winPosition').textContent = `Position: #${s.position.position} of ${s.position.total}`;
+      showScreen('winnerScreen');
+    } else {
+      // Dead — should already be on eliminated screen, but just in case
+      isEliminated = true;
+      if(s.position) {
+        document.getElementById('elimPosition').innerHTML =
+          `Position: <span>#${s.position.position}</span> / ${s.position.total}`;
+      }
+      showScreen('eliminatedScreen');
+    }
+  }
+});
+
+socket.on('eliminated', d => {
+  isAlive=false; gameActive=false; isHolding=false; isEliminated=true;
+  if(d&&d.position) {
+    document.getElementById('elimPosition').innerHTML =
+      `Position: <span>#${d.position.position}</span> / ${d.position.total}`;
+  }
+  showScreen('eliminatedScreen');
+  if(navigator.vibrate) navigator.vibrate([200,100,200,100,200]);
+});
+
+// ── Touch ──
+const holdZone = document.getElementById('holdZone');
+
+function onHoldStart(e) {
+  e.preventDefault();
+  if(!gameActive || !isAlive || isEliminated) return;
+  isHolding=true; socket.emit('holdStart');
+  holdZone.classList.add('pressing');
+  if(navigator.vibrate) navigator.vibrate(30);
+}
+function onHoldEnd(e) {
+  e.preventDefault();
+  if(!isAlive || isEliminated) return;
+  isHolding=false; socket.emit('holdEnd');
+  holdZone.classList.remove('pressing');
+}
+
+holdZone.addEventListener('touchstart', onHoldStart, {passive:false});
+holdZone.addEventListener('touchend', onHoldEnd, {passive:false});
+holdZone.addEventListener('touchcancel', onHoldEnd, {passive:false});
+holdZone.addEventListener('mousedown', onHoldStart);
+holdZone.addEventListener('mouseup', onHoldEnd);
+holdZone.addEventListener('mouseleave', onHoldEnd);
+document.addEventListener('contextmenu', e=>e.preventDefault());
+document.addEventListener('dblclick', e=>e.preventDefault());
+document.body.addEventListener('touchmove', e=>{ if(gameActive) e.preventDefault(); }, {passive:false});
+</script>
+</body>
+</html>
